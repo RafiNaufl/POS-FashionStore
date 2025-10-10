@@ -40,7 +40,14 @@ class WhatsAppManager {
       isConnected: false,
       qrCode: null
     };
-    this.authDir = path.join(process.cwd(), '.wwebjs_auth', 'session-pos-app-whatsapp');
+    
+    // Use /tmp directory in production (Vercel) for writable access
+    // Use local directory in development
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+    this.authDir = isProduction 
+      ? path.join('/tmp', '.wwebjs_auth', 'session-pos-app-whatsapp')
+      : path.join(process.cwd(), '.wwebjs_auth', 'session-pos-app-whatsapp');
+    
     this.ensureAuthDir();
   }
 
@@ -52,8 +59,19 @@ class WhatsAppManager {
   }
 
   private ensureAuthDir(): void {
-    if (!fs.existsSync(this.authDir)) {
-      fs.mkdirSync(this.authDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.authDir)) {
+        fs.mkdirSync(this.authDir, { recursive: true });
+        console.log(`[WhatsApp] Created auth directory: ${this.authDir}`);
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to create auth directory: ${this.authDir}`, error);
+      // In production, if we can't create the directory, we'll handle it gracefully
+      if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
+        console.warn('[WhatsApp] Running in production without persistent session storage');
+      } else {
+        throw error;
+      }
     }
   }
 
